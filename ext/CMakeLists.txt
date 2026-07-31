@@ -261,8 +261,7 @@ if(bcrypt_ADDED) # bcrypt's cmake isn't suitable for us
             ${bcrypt_SOURCE_DIR}/src/bcrypt.c
             ${bcrypt_SOURCE_DIR}/src/crypt_blowfish.c
             ${bcrypt_SOURCE_DIR}/src/crypt_gensalt.c
-            ${bcrypt_SOURCE_DIR}/src/wrapper.c
-            ${bcrypt_SOURCE_DIR}/src/x86.S
+                        ${bcrypt_SOURCE_DIR}/src/wrapper.c
     )
     target_include_directories(bcrypt
         SYSTEM INTERFACE
@@ -322,8 +321,8 @@ elseif(UNIX)
     list(APPEND CPPTRACE_SYMBOL_OPTIONS
         "CPPTRACE_GET_SYMBOLS_WITH_ADDR2LINE OFF"
         "CPPTRACE_GET_SYMBOLS_WITH_LIBDWARF ON"
-        "CPPTRACE_USE_EXTERNAL_LIBDWARF ON"
-        "CPPTRACE_FIND_LIBDWARF_WITH_PKGCONFIG ON"
+                "CPPTRACE_USE_EXTERNAL_LIBDWARF OFF"
+                "CPPTRACE_FIND_LIBDWARF_WITH_PKGCONFIG OFF"
     )
 endif()
 

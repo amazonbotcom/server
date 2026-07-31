@@ -94,6 +94,7 @@ function(set_project_warnings project_name)
 
       # TODO: Remove this exception
       -Wno-useless-cast           # warn if you perform a cast to the same type
+      -Wno-stringop-overread      # Disable stringop-overread warnings from validation code
 
       # Silence GCC note/warning:
       # note: variable tracking size limit exceeded with ‘-fvar-tracking-assignments’

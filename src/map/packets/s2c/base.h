@@ -69,9 +69,15 @@ protected:
 
     // Access shifted by header size so individual packets do not need to declare it.
     template <typename T = Derived>
-    auto data(this auto& self) -> auto&
+    auto data() -> auto&
     {
-        return *payloadCast<typename T::PacketData>(self.buffer_.data() + sizeof(GP_SERV_HEADER));
+        return *payloadCast<typename T::PacketData>(this->buffer_.data() + sizeof(GP_SERV_HEADER));
+    }
+
+    template <typename T = Derived>
+    auto data() const -> const auto&
+    {
+        return *payloadCast<typename T::PacketData>(this->buffer_.data() + sizeof(GP_SERV_HEADER));
     }
 
 private:
