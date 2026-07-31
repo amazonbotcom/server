@@ -91,9 +91,6 @@ jobs:
     defaults:
       run:
         shell: bash
-    env:
-      SCCACHE_DIR: ${{ format('{0}/build/sccache', github.workspace) }}
-      SCCACHE_CACHE_SIZE: "1G"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -105,6 +102,8 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install --assume-yes --no-install-recommends --quiet \
             g++ \
+            ninja-build \
+            cmake \
             binutils-dev \
             libluajit-5.1-dev \
             libmariadb-dev-compat \
@@ -123,11 +122,6 @@ jobs:
           echo "CC=/usr/bin/gcc" >> $GITHUB_ENV
           echo "CXX=/usr/bin/g++" >> $GITHUB_ENV
 
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-        with:
-          disable_annotations: false
-
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
@@ -136,14 +130,28 @@ jobs:
       - name: Install Python codegen deps
         run: python -m pip install jinja2 jsonschema pyyaml
 
+      - name: Patch cpptrace Autoconfig.cmake (force libdl, disable libdwarf)
+        run: |
+          echo "Patching cpptrace Autoconfig.cmake to use bundled libdwarf..."
+          FILE="ext/cpptrace/cmake/Autoconfig.cmake"
+          if [ -f "$FILE" ]; then
+            echo "=== Before ==="
+            grep -n "CPPTRACE_GET_SYMBOLS_WITH" "$FILE"
+            sed -i 's/set(CPPTRACE_GET_SYMBOLS_WITH_LIBDWARF On)/set(CPPTRACE_GET_SYMBOLS_WITH_LIBDWARF OFF)/g' "$FILE"
+            sed -i 's/set(CPPTRACE_GET_SYMBOLS_WITH_LIBDL ON)/set(CPPTRACE_GET_SYMBOLS_WITH_LIBDL ON)/g' "$FILE"
+            echo "=== After ==="
+            grep -n "CPPTRACE_GET_SYMBOLS_WITH" "$FILE"
+          else
+            echo "WARNING: $FILE not found"
+          fi
+
       - name: Configure CMake (ARM64 - use bundled libdwarf)
         run: |
-          cmake -G Ninja -S . -B build --fresh \
+          cmake -G Ninja -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DCPPTRACE_USE_EXTERNAL_LIBDWARF=OFF \
             -DCPPTRACE_FIND_LIBDWARF_WITH_PKGCONFIG=OFF \
-            -DPCH_ENABLE=ON \
-            -DCACHE_OPTION=sccache
+            -DPCH_ENABLE=ON
 
       - name: Build
         run: cmake --build build | tee build.log
