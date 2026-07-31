@@ -70,10 +70,12 @@ jobs:
         run: |
           mkdir -p release
           for bin in xi_connect xi_map xi_search xi_world; do
-            if [ -f "build/$bin" ]; then
-              cp "build/$bin" release/
-            fi
+            find build -name "$bin" -type f -executable | while read f; do
+              cp "$f" release/
+              break
+            done
           done
+          ls -la release/
           tar czf landsandboat-arm64.tar.gz -C release .
 
       - name: Upload artifact
