@@ -84,6 +84,96 @@ jobs:
       upload_artifact: ${{ matrix.upload_artifact }}
       clang_tidy: ${{ matrix.clang_tidy }}
 
+  ARM64_Build:
+    name: ARM64 Build
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      SCCACHE_DIR: ${{ format('{0}/build/sccache', github.workspace) }}
+      SCCACHE_CACHE_SIZE: "1G"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          submodules: recursive
+
+      - name: Install dependencies (ARM64 Linux)
+        run: |
+          sudo apt-get update && sudo apt-get install --assume-yes --no-install-recommends --quiet \
+            g++ \
+            binutils-dev \
+            libluajit-5.1-dev \
+            libmariadb-dev-compat \
+            libssl-dev \
+            libzmq3-dev \
+            luajit \
+            mariadb-client \
+            tzdata \
+            zlib1g-dev \
+            libzstd-dev \
+            libunwind-dev \
+            libelf-dev
+
+      - name: Setup GCC (ARM64 Linux)
+        run: |
+          echo "CC=/usr/bin/gcc" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/g++" >> $GITHUB_ENV
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+        with:
+          disable_annotations: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Install Python codegen deps
+        run: python -m pip install jinja2 jsonschema pyyaml
+
+      - name: Configure CMake (ARM64 - use bundled libdwarf)
+        run: |
+          cmake -G Ninja -S . -B build --fresh \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCPPTRACE_USE_EXTERNAL_LIBDWARF=OFF \
+            -DCPPTRACE_FIND_LIBDWARF_WITH_PKGCONFIG=OFF \
+            -DPCH_ENABLE=ON \
+            -DCACHE_OPTION=sccache
+
+      - name: Build
+        run: cmake --build build | tee build.log
+
+      - name: Package artifacts
+        run: |
+          mkdir -p release
+          for bin in xi_connect xi_map xi_search xi_world; do
+            if [ -f "build/$bin" ]; then
+              cp "build/$bin" release/
+            fi
+          done
+          tar czf landsandboat-arm64.tar.gz -C release .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: landsandboat-arm64
+          path: landsandboat-arm64.tar.gz
+          retention-days: 7
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: landsandboat-arm64-logs
+          path: |
+            build/*.log
+          retention-days: 7
+
   Docker_Build:
     name: ${{ matrix.save_cache && 'Cache Build' || 'Build' }}
     strategy:
