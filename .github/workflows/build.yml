@@ -94,7 +94,7 @@ jobs:
         run: |
           cd build
           cmake -G Ninja .. -DCMAKE_BUILD_TYPE=Release \
-            -DCPPTRACE_USE_EXTERNAL_LIBDWARF=ON \
+            -DCPPTRACE_USE_EXTERNAL_LIBDWARF=OFF \
             -DCPPTRACE_FIND_LIBDWARF_WITH_PKGCONFIG=OFF 2>&1 | tee cmake_second.log
 
       - name: Build
