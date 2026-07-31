@@ -57,28 +57,44 @@ jobs:
       - name: Install Python codegen deps
         run: python -m pip install jinja2 jsonschema pyyaml
 
+      - name: First CMake (download deps, allow failure)
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release \
+            -DCPPTRACE_USE_EXTERNAL_LIBDWARF=ON \
+            -DCPPTRACE_FIND_LIBDWARF_WITH_PKGCONFIG=OFF 2>&1 | tee cmake_first.log
+          echo "First CMake finished (exit code: ${PIPESTATUS[0]})"
+
       - name: Patch cpptrace Autoconfig.cmake (force libdl, disable libdwarf)
         run: |
-          echo "Patching cpptrace Autoconfig.cmake to use bundled libdwarf..."
-          FILE="ext/cpptrace/cmake/Autoconfig.cmake"
+          FILE="build/_deps/cpptrace-src/cmake/Autoconfig.cmake"
           if [ -f "$FILE" ]; then
-            echo "=== Before ==="
+            echo "=== Before Autoconfig.cmake ==="
             grep -n "CPPTRACE_GET_SYMBOLS_WITH" "$FILE"
+            
+            # libdwarfをOFF、libdlをONに強制
             sed -i 's/set(CPPTRACE_GET_SYMBOLS_WITH_LIBDWARF On)/set(CPPTRACE_GET_SYMBOLS_WITH_LIBDWARF OFF)/g' "$FILE"
             sed -i 's/set(CPPTRACE_GET_SYMBOLS_WITH_LIBDL ON)/set(CPPTRACE_GET_SYMBOLS_WITH_LIBDL ON)/g' "$FILE"
-            echo "=== After ==="
+            
+            echo "=== After Autoconfig.cmake ==="
             grep -n "CPPTRACE_GET_SYMBOLS_WITH" "$FILE"
           else
             echo "WARNING: $FILE not found"
+            ls -la build/_deps/ 2>/dev/null || echo "No _deps directory"
           fi
 
-      - name: Configure CMake (ARM64 - use bundled libdwarf)
+      - name: Clean CMake cache
         run: |
-          cmake -G Ninja -S . -B build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCPPTRACE_USE_EXTERNAL_LIBDWARF=OFF \
-            -DCPPTRACE_FIND_LIBDWARF_WITH_PKGCONFIG=OFF \
-            -DPCH_ENABLE=ON
+          rm -f build/CMakeCache.txt
+          rm -rf build/CMakeFiles
+
+      - name: Second CMake (with patches applied)
+        run: |
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release \
+            -DCPPTRACE_USE_EXTERNAL_LIBDWARF=ON \
+            -DCPPTRACE_FIND_LIBDWARF_WITH_PKGCONFIG=OFF 2>&1 | tee cmake_second.log
 
       - name: Build
         run: cmake --build build | tee build.log
